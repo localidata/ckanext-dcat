@@ -121,8 +121,10 @@ class DCATPlugin(MixinDCATPlugin, p.SingletonPlugin, DefaultTranslation):
                 set_titles(resource)
 
             for extra in data_dict.get('extras', []):
-                if extra['key'] in field_labels:
-                    extra['key'] = field_labels[extra['key']]
+                if extra is not None:
+                    if not extra:
+                        if extra['key'] in field_labels:
+                            extra['key'] = field_labels[extra['key']]
 
         return data_dict
 
