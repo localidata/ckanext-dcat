@@ -1,16 +1,17 @@
 import os
+import uuid
 import logging
 
-import six
 import requests
 import rdflib
 
 from ckan import plugins as p
+from ckan import logic
 from ckan import model
 
 
 from ckanext.harvest.harvesters import HarvesterBase
-from ckanext.harvest.model import HarvestObject
+from ckanext.harvest.model import HarvestObject, HarvestObjectExtra
 
 from ckanext.dcat.interfaces import IDCATRDFHarvester
 
@@ -50,7 +51,6 @@ class DCATHarvester(HarvesterBase):
                 return None, None
 
         try:
-
             if page > 1:
                 url = url + '&' if '?' in url else url + '?'
                 url = url + 'page={0}'.format(page)
@@ -65,7 +65,6 @@ class DCATHarvester(HarvesterBase):
             # first we try a HEAD request which may not be supported
             did_get = False
             r = session.head(url)
-
             if r.status_code == 405 or r.status_code == 400:
                 r = session.get(url, stream=True)
                 did_get = True
@@ -85,11 +84,7 @@ class DCATHarvester(HarvesterBase):
             length = 0
             content = ''
             for chunk in r.iter_content(chunk_size=self.CHUNK_SIZE):
-                if six.PY2:
-                    content = content + chunk
-                else:
-                    content = content + chunk.decode('utf8')
-
+                content = content + chunk
                 length += len(chunk)
 
                 if length >= self.MAX_FILE_SIZE:
@@ -102,7 +97,7 @@ class DCATHarvester(HarvesterBase):
 
             return content, content_type
 
-        except requests.exceptions.HTTPError as error:
+        except requests.exceptions.HTTPError, error:
             if page > 1 and error.response.status_code == 404:
                 # We want to catch these ones later on
                 raise
@@ -111,12 +106,12 @@ class DCATHarvester(HarvesterBase):
                 % (url, error.response.status_code, error.response.reason)
             self._save_gather_error(msg, harvest_job)
             return None, None
-        except requests.exceptions.ConnectionError as error:
+        except requests.exceptions.ConnectionError, error:
             msg = '''Could not get content from %s because a
                                 connection error occurred. %s''' % (url, error)
             self._save_gather_error(msg, harvest_job)
             return None, None
-        except requests.exceptions.Timeout as error:
+        except requests.exceptions.Timeout, error:
             msg = 'Could not get content from %s because the connection timed'\
                 ' out.' % url
             self._save_gather_error(msg, harvest_job)
@@ -154,9 +149,11 @@ class DCATHarvester(HarvesterBase):
             return obj.source.url
         return None
 
-    def _read_datasets_from_db(self, guid):
+    def _get_existing_dataset(self, guid):
         '''
-        Returns a database result of datasets matching the given guid.
+        Checks if a dataset with a certain guid extra already exists
+
+        Returns a dict as the ones returned by package_show
         '''
 
         datasets = model.Session.query(model.Package.id) \
@@ -165,16 +162,6 @@ class DCATHarvester(HarvesterBase):
                                 .filter(model.PackageExtra.value == guid) \
                                 .filter(model.Package.state == 'active') \
                                 .all()
-        return datasets
-
-    def _get_existing_dataset(self, guid):
-        '''
-        Checks if a dataset with a certain guid extra already exists
-
-        Returns a dict as the ones returned by package_show
-        '''
-
-        datasets = self._read_datasets_from_db(guid)
 
         if not datasets:
             return None

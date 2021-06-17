@@ -1,7 +1,6 @@
-from builtins import str
 import json
 
-import pytest
+import nose
 
 from ckantoolkit import config
 
@@ -16,6 +15,9 @@ from ckanext.dcat.processors import RDFSerializer
 from ckanext.dcat.profiles import SCHEMA
 
 from ckanext.dcat.tests.test_euro_dcatap_profile_serialize import BaseSerializeTest
+
+eq_ = nose.tools.eq_
+assert_true = nose.tools.assert_true
 
 
 class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
@@ -60,7 +62,7 @@ class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
 
         dataset_ref = s.graph_from_dataset(dataset)
 
-        assert str(dataset_ref) == utils.dataset_uri(dataset)
+        eq_(unicode(dataset_ref), utils.dataset_uri(dataset))
 
         # Basic fields
         assert self._triple(g, dataset_ref, RDF.type, SCHEMA.Dataset)
@@ -71,14 +73,14 @@ class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
         assert self._triple(g, dataset_ref, SCHEMA.identifier, extras['identifier'])
         url = self._triple(g, dataset_ref, SCHEMA.url, None)[2]
         assert url
-        assert url == Literal('http://test.ckan.net/dataset/%s' % dataset['name'])
+        eq_(url, Literal('http://test.ckan.net/dataset/%s' % dataset['name']))
 
         # Dates
         assert self._triple(g, dataset_ref, SCHEMA.datePublished, dataset['metadata_created'])
         assert self._triple(g, dataset_ref, SCHEMA.dateModified, dataset['metadata_modified'])
 
         # Tags
-        assert len([t for t in g.triples((dataset_ref, SCHEMA.keywords, None))]) == 2
+        eq_(len([t for t in g.triples((dataset_ref, SCHEMA.keywords, None))]), 2)
         for tag in dataset['tags']:
             assert self._triple(g, dataset_ref, SCHEMA.keywords, tag['name'])
 
@@ -87,7 +89,7 @@ class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
             ('language', SCHEMA.inLanguage, Literal),
         ]:
             values = json.loads(extras[item[0]])
-            assert len([t for t in g.triples((dataset_ref, item[1], None))]) == len(values)
+            eq_(len([t for t in g.triples((dataset_ref, item[1], None))]), len(values))
             for value in values:
                 assert self._triple(g, dataset_ref, item[1], item[2](value))
 
@@ -119,7 +121,7 @@ class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
 
         publisher = self._triple(g, dataset_ref, SCHEMA.publisher, None)[2]
         assert publisher
-        assert str(publisher) == extras['publisher_uri']
+        eq_(unicode(publisher), extras['publisher_uri'])
         assert self._triple(g, publisher, RDF.type, SCHEMA.Organization)
         assert self._triple(g, publisher, SCHEMA.name, extras['publisher_name'])
 
@@ -185,14 +187,14 @@ class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
             names.append(str(g.value(item[2], SCHEMA.name)))
             urls.append(str(g.value(item[2], SCHEMA.url)))
 
-        assert sorted(names), ['geography' == 'statistics']
-        assert (sorted(urls) == [
+        eq_(sorted(names), ['geography', 'statistics'])
+        eq_(sorted(urls), [
             'http://test.ckan.net/group/geography',
             'http://test.ckan.net/group/statistics'])
 
-    @pytest.mark.ckan_config('ckan.site_url', 'http://ckan.example.org')
-    @pytest.mark.ckan_config('ckan.site_description', 'CKAN Portal')
-    @pytest.mark.ckan_config('ckan.site_title', 'ckan.example.org')
+    @helpers.change_config('ckan.site_url', 'http://ckan.example.org')
+    @helpers.change_config('ckan.site_description', 'CKAN Portal')
+    @helpers.change_config('ckan.site_title', 'ckan.example.org')
     def test_catalog(self):
         dataset = {
             'id': '4b6fe9ca-dc77-4cec-92a4-55c6624a5bd6',
@@ -264,7 +266,7 @@ class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
 
         spatial = self._triple(g, dataset_ref, SCHEMA.spatialCoverage, None)[2]
         assert spatial
-        assert str(spatial) == extras['spatial_uri']
+        eq_(unicode(spatial), extras['spatial_uri'])
         assert self._triple(g, spatial, RDF.type, SCHEMA.Place)
         assert self._triple(g, spatial, SCHEMA.description, extras['spatial_text'])
         geo = self._triple(g, spatial, SCHEMA.geo, None)[2]
@@ -302,7 +304,7 @@ class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
 
         dataset_ref = s.graph_from_dataset(dataset)
 
-        assert len([t for t in g.triples((dataset_ref, SCHEMA.distribution, None))]) == 3
+        eq_(len([t for t in g.triples((dataset_ref, SCHEMA.distribution, None))]), 3)
 
         for resource in dataset['resources']:
             distribution = self._triple(g,
@@ -343,11 +345,11 @@ class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
 
         dataset_ref = s.graph_from_dataset(dataset)
 
-        assert len([t for t in g.triples((dataset_ref, SCHEMA.distribution, None))]) == 1
+        eq_(len([t for t in g.triples((dataset_ref, SCHEMA.distribution, None))]), 1)
 
         # URI
         distribution = self._triple(g, dataset_ref, SCHEMA.distribution, None)[2]
-        assert str(distribution) == utils.resource_uri(resource)
+        eq_(unicode(distribution), utils.resource_uri(resource))
 
         # Basic fields
         assert self._triple(g, distribution, RDF.type, SCHEMA.DataDownload)
@@ -360,7 +362,7 @@ class TestSchemaOrgProfileSerializeDataset(BaseSerializeTest):
             ('language', SCHEMA.inLanguage),
         ]:
             values = json.loads(resource[item[0]])
-            assert len([t for t in g.triples((distribution, item[1], None))]) == len(values)
+            eq_(len([t for t in g.triples((distribution, item[1], None))]), len(values))
             for value in values:
                 assert self._triple(g, distribution, item[1], value)
 

@@ -1,12 +1,8 @@
-from builtins import str
-from past.builtins import basestring
 import json
 import uuid
 import logging
 import hashlib
 import traceback
-
-import six
 
 import ckan.plugins as p
 import ckan.model as model
@@ -111,7 +107,7 @@ class DCATRDFHarvester(DCATHarvester):
         for guid, package_id in query:
             guid_to_package_id[guid] = package_id
 
-        guids_in_db = list(guid_to_package_id.keys())
+        guids_in_db = guid_to_package_id.keys()
 
         # Get objects/datasets to delete (ie in the DB but not in the source)
         guids_to_delete = set(guids_in_db) - set(guids_in_source)
@@ -177,10 +173,7 @@ class DCATRDFHarvester(DCATHarvester):
 
             content_hash = hashlib.md5()
             if content:
-                if six.PY2:
-                    content_hash.update(content)
-                else:
-                    content_hash.update(content.encode('utf8'))
+                content_hash.update(content)
 
             if last_content_hash:
                 if content_hash.digest() == last_content_hash.digest():
@@ -204,7 +197,7 @@ class DCATRDFHarvester(DCATHarvester):
 
             try:
                 parser.parse(content, _format=rdf_format)
-            except RDFParserException as e:
+            except RDFParserException, e:
                 self._save_gather_error('Error parsing the RDF file: {0}'.format(e), harvest_job)
                 return []
 
@@ -242,7 +235,7 @@ class DCATRDFHarvester(DCATHarvester):
 
                     obj.save()
                     object_ids.append(obj.id)
-            except Exception as e:
+            except Exception, e:
                 self._save_gather_error('Error when processsing dataset: %r / %s' % (e, traceback.format_exc()),
                                         harvest_job)
                 return []
@@ -315,13 +308,7 @@ class DCATRDFHarvester(DCATHarvester):
         existing_dataset = self._get_existing_dataset(harvest_object.guid)
 
         try:
-            package_plugin = lib_plugins.lookup_package_plugin(dataset.get('type', None))
             if existing_dataset:
-                package_schema = package_plugin.update_package_schema()
-                for harvester in p.PluginImplementations(IDCATRDFHarvester):
-                    package_schema = harvester.update_package_schema_for_update(package_schema)
-                context['schema'] = package_schema
-
                 # Don't change the dataset name even if the title has
                 dataset['name'] = existing_dataset['name']
                 dataset['id'] = existing_dataset['id']
@@ -349,7 +336,7 @@ class DCATRDFHarvester(DCATHarvester):
                     else:
                         log.info('Ignoring dataset %s' % existing_dataset['name'])
                         return 'unchanged'
-                except p.toolkit.ValidationError as e:
+                except p.toolkit.ValidationError, e:
                     self._save_object_error('Update validation Error: %s' % str(e.error_summary), harvest_object, 'Import')
                     return False
 
@@ -363,14 +350,14 @@ class DCATRDFHarvester(DCATHarvester):
                 log.info('Updated dataset %s' % dataset['name'])
 
             else:
+                package_plugin = lib_plugins.lookup_package_plugin(dataset.get('type', None))
+
                 package_schema = package_plugin.create_package_schema()
-                for harvester in p.PluginImplementations(IDCATRDFHarvester):
-                    package_schema = harvester.update_package_schema_for_create(package_schema)
                 context['schema'] = package_schema
 
                 # We need to explicitly provide a package ID
-                dataset['id'] = str(uuid.uuid4())
-                package_schema['id'] = [str]
+                dataset['id'] = unicode(uuid.uuid4())
+                package_schema['id'] = [unicode]
 
                 harvester_tmp_dict = {}
 
@@ -394,7 +381,7 @@ class DCATRDFHarvester(DCATHarvester):
                     else:
                         log.info('Ignoring dataset %s' % name)
                         return 'unchanged'
-                except p.toolkit.ValidationError as e:
+                except p.toolkit.ValidationError, e:
                     self._save_object_error('Create validation Error: %s' % str(e.error_summary), harvest_object, 'Import')
                     return False
 
@@ -407,7 +394,7 @@ class DCATRDFHarvester(DCATHarvester):
 
                 log.info('Created dataset %s' % dataset['name'])
 
-        except Exception as e:
+        except Exception, e:
             self._save_object_error('Error importing dataset %s: %r / %s' % (dataset.get('name', ''), e, traceback.format_exc()), harvest_object, 'Import')
             return False
 

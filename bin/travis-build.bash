@@ -1,17 +1,7 @@
-#!/bin/bash
+    #nex!/bin/bash
 set -e
 
 echo "This is travis-build.bash..."
-echo "Targetting CKAN $CKANVERSION on Python $TRAVIS_PYTHON_VERSION"
-if [ $CKANVERSION == 'master' ]
-then
-    export CKAN_MINOR_VERSION=100
-else
-    export CKAN_MINOR_VERSION=${CKANVERSION##*.}
-fi
-
-export PYTHON_MAJOR_VERSION=${TRAVIS_PYTHON_VERSION%.*}
-
 
 echo "Installing the packages that CKAN requires..."
 sudo apt-get update -qq
@@ -49,12 +39,7 @@ then
     pip install setuptools==39.0.1
 fi
 
-if (( $CKAN_MINOR_VERSION >= 9 )) && (( $PYTHON_MAJOR_VERSION == 2 ))
-then
-    pip install -r requirements-py2.txt
-else
-    pip install -r requirements.txt
-fi
+pip install -r requirements.txt
 pip install -r dev-requirements.txt
 cd -
 
@@ -69,14 +54,7 @@ sudo -u postgres psql -c 'CREATE DATABASE ckan_test WITH OWNER ckan_default;'
 
 echo "Initialising the database..."
 cd ckan
-
-
-if (( $CKAN_MINOR_VERSION >= 9 ))
-then
-    ckan -c test-core.ini db init
-else
-    paster db init -c test-core.ini
-fi
+paster db init -c test-core.ini
 cd -
 
 echo "Installing ckanext-harvest and its requirements..."
@@ -84,13 +62,7 @@ git clone https://github.com/ckan/ckanext-harvest
 cd ckanext-harvest
 python setup.py develop
 pip install -r pip-requirements.txt
-
-if (( $CKAN_MINOR_VERSION >= 9 ))
-then
-    ckan -c test.ini harvester initdb
-else
-    paster harvester initdb -c test.ini
-fi
+paster harvester initdb -c ../ckan/test-core.ini
 cd -
 
 echo "Installing ckanext-dcat and its requirements..."
@@ -102,6 +74,5 @@ python setup.py develop
 echo "Moving test.ini into a subdir..."
 mkdir subdir
 mv test.ini subdir
-mv test-nose.ini subdir
 
 echo "travis-build.bash is done."
